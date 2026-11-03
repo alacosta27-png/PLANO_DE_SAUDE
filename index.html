@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F4C5C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Plano de Saúde · José Luiz & Cacilda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<style>
+:root{
+  --bg:#F4F1EA; --card:#FFFFFF; --ink:#1D2A30; --muted:#6B7A80; --line:#E3DED3;
+  --pri:#0F4C5C; --pri2:#16697A; --acc:#E36414; --ok:#2E8B57; --okbg:#E6F4EC;
+  --warn:#C98A0B; --warnbg:#FCF3DC; --bad:#C0392B; --badbg:#FBE6E3; --grey:#9AA5AA; --greybg:#EEF0F1;
+  --r:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;font-size:15px;-webkit-font-smoothing:antialiased}
+body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+h1,h2,h3,.num{font-family:"Barlow Condensed",sans-serif;letter-spacing:.2px}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select{font-family:inherit;font-size:16px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 14px}
+
+/* topo */
+header{background:var(--pri);color:#fff;padding:16px 0 54px;position:relative}
+header .wrap{display:flex;align-items:center;justify-content:space-between;gap:10px}
+header h1{font-size:24px;font-weight:700;line-height:1.05}
+header small{display:block;font-family:Inter;font-size:12px;opacity:.8;font-weight:500;margin-top:2px}
+.who{background:rgba(255,255,255,.14);border-radius:999px;padding:7px 12px;font-size:13px;font-weight:600;white-space:nowrap}
+.mode-banner{background:var(--warnbg);color:#7a5300;font-size:12.5px;padding:8px 14px;text-align:center}
+
+.monthbar{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:-40px;position:relative;z-index:2}
+.monthbar button{width:40px;height:40px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.08);font-size:20px;color:var(--pri)}
+.monthbar .mlabel{background:#fff;border-radius:999px;padding:9px 20px;box-shadow:0 2px 8px rgba(0,0,0,.08);font-family:"Barlow Condensed";font-size:22px;font-weight:700;color:var(--pri);min-width:190px;text-align:center;text-transform:capitalize}
+
+.card{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.05);margin-top:14px}
+.card h2{font-size:20px;color:var(--pri);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.grid{display:grid;gap:14px}
+@media(min-width:860px){.grid.cols{grid-template-columns:360px 1fr;align-items:start}}
+
+/* resumo */
+.big{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.big .num{font-size:40px;font-weight:700;color:var(--ink);line-height:1}
+.lbl{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.kpi{background:var(--bg);border-radius:10px;padding:10px 12px}
+.kpi .num{font-size:24px;font-weight:700;display:block;margin-top:2px}
+.bar{height:10px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:14px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--pri2),var(--ok));border-radius:99px;transition:width .4s}
+.note{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.45}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:4px 9px;border-radius:999px;white-space:nowrap}
+.p-ok{background:var(--okbg);color:var(--ok)} .p-warn{background:var(--warnbg);color:var(--warn)}
+.p-bad{background:var(--badbg);color:var(--bad)} .p-grey{background:var(--greybg);color:var(--grey)}
+.p-pri{background:#E2EEF1;color:var(--pri)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;padding:11px 14px;font-weight:600;font-size:14px;background:var(--pri);color:#fff}
+.btn.sec{background:#E2EEF1;color:var(--pri)}
+.btn.acc{background:var(--acc)}
+.btn.wa{background:#25D366;color:#fff}
+.btn.ghost{background:transparent;color:var(--pri);padding:6px 8px}
+.btn.full{width:100%}
+.btn.sm{padding:7px 10px;font-size:13px;border-radius:8px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* pix */
+.pix{background:linear-gradient(135deg,#0F4C5C,#16697A);color:#fff;border-radius:var(--r);padding:14px 16px}
+.pix .k{font-family:"Barlow Condensed";font-size:26px;font-weight:700;letter-spacing:1px}
+.pix .row{justify-content:space-between}
+.pix .btn{background:#fff;color:var(--pri)}
+
+/* participantes */
+.plist{display:grid;gap:10px}
+@media(min-width:620px){.plist{grid-template-columns:1fr 1fr}}
+.pc{border:1.5px solid var(--line);border-radius:12px;padding:12px;background:#fff}
+.pc.paid{border-color:#bfe2cd;background:#FAFDFB}
+.pc.late{border-color:#f1c4bd}
+.pc .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.pc .nm{font-weight:700;font-size:16px}
+.pc .tp{font-size:11.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.pc .cota{font-family:"Barlow Condensed";font-size:28px;font-weight:700;color:var(--pri);margin-top:6px;line-height:1}
+.pc .sub{font-size:12.5px;color:var(--muted);margin-top:3px}
+.seg{display:flex;background:var(--bg);border-radius:9px;padding:3px;margin-top:10px}
+.seg button{flex:1;padding:7px 4px;border-radius:7px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.seg button.on{background:#fff;color:var(--pri);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.fixin{display:flex;gap:6px;margin-top:8px;align-items:center}
+.fixin span{font-size:13px;color:var(--muted)}
+.inp{width:100%;border:1.5px solid var(--line);border-radius:9px;padding:9px 11px;background:#fff;color:var(--ink)}
+.inp:focus{outline:none;border-color:var(--pri2)}
+.pc .acts{display:flex;gap:6px;margin-top:10px}
+.pc .acts .btn{flex:1}
+
+/* tabelas */
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);text-align:left;padding:8px 6px;border-bottom:1.5px solid var(--line);white-space:nowrap}
+.tbl td{padding:9px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl td.r,.tbl th.r{text-align:right;white-space:nowrap}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.pos{color:var(--ok);font-weight:600}.neg{color:var(--bad);font-weight:600}
+
+/* gauge reserva */
+.gauge{position:relative;height:16px;background:var(--line);border-radius:99px;margin:18px 0 26px}
+.gauge .fill{height:100%;border-radius:99px;background:var(--pri2)}
+.gauge .zone{position:absolute;top:-4px;bottom:-4px;border:2px dashed var(--ok);border-radius:6px;background:rgba(46,139,87,.08)}
+.gauge .tick{position:absolute;top:22px;font-size:11px;color:var(--muted);transform:translateX(-50%);white-space:nowrap}
+
+/* nav */
+nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom);z-index:20}
+nav .in{display:flex;max-width:560px;width:100%}
+nav button{flex:1;padding:9px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11.5px;font-weight:600;color:var(--muted)}
+nav button .ic{font-size:20px;line-height:1}
+nav button.on{color:var(--pri)}
+
+/* modal */
+.ov{position:fixed;inset:0;background:rgba(15,30,36,.5);display:none;align-items:flex-end;justify-content:center;z-index:50}
+.ov.show{display:flex}
+.modal{background:#fff;width:100%;max-width:460px;border-radius:18px 18px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}
+@media(min-width:620px){.ov{align-items:center}.modal{border-radius:18px}}
+.modal h3{font-size:22px;color:var(--pri);margin-bottom:12px}
+.fld{margin-bottom:12px}
+.fld label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:5px}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;z-index:60;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.empty{text-align:center;padding:22px 10px;color:var(--muted)}
+.rules li{margin:0 0 8px 18px;line-height:1.45;font-size:14px}
+.log{font-size:12.5px;color:var(--muted);line-height:1.5}
+.log b{color:var(--ink);font-weight:600}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+
+<div id="modeBanner" class="mode-banner hide">⚠️ Modo de teste: os dados estão salvos só neste aparelho. Configure o Firebase (ver início do código) para todos compartilharem.</div>
+
+<header>
+  <div class="wrap">
+    <div>
+      <h1>Plano de Saúde<br>José Luiz &amp; Cacilda</h1>
+      <small>Rateio mensal da família · cofrinho com o Carlos</small>
+    </div>
+    <button class="who" id="whoBtn" onclick="pickWho()">👤 <span id="whoName">Quem é você?</span></button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="monthbar" id="monthbar">
+    <button onclick="shiftMonth(-1)" aria-label="Mês anterior">‹</button>
+    <div class="mlabel" id="mLabel">—</div>
+    <button onclick="shiftMonth(1)" aria-label="Próximo mês">›</button>
+  </div>
+
+  <!-- ============ ABA MÊS ============ -->
+  <section id="tab-mes">
+    <div class="grid cols">
+      <div>
+        <div class="card" id="resumo"></div>
+        <div class="card pix">
+          <div class="lbl" style="color:#cfe6ea">Pix para o <span id="pixResp">Carlos</span> · CPF</div>
+          <div class="row" style="margin-top:4px">
+            <div class="k" id="pixKey">—</div>
+            <button class="btn sm" onclick="copyPix()">Copiar</button>
+          </div>
+          <div style="font-size:12.5px;opacity:.85;margin-top:6px">Deposite até o dia <b id="pixDia">10</b> e avise no grupo. 👍</div>
+        </div>
+        <div class="card">
+          <button class="btn wa full" onclick="shareWA()">💬 Enviar resumo no grupo do WhatsApp</button>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <h2>Quem contribui com quanto <span class="pill p-pri" id="ruleInfo">rateio automático</span></h2>
+          <div class="note" style="margin:-4px 0 12px">Quem escolhe <b>Valor fixo</b> paga o que definiu. O restante do mês é dividido igualmente entre quem está em <b>Rateio</b>. <b>Pausado</b> não contribui no mês e a cota é redistribuída.</div>
+          <div class="plist" id="plist"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ABA COFRINHO ============ -->
+  <section id="tab-cofre" class="hide">
+    <div class="grid cols">
+      <div>
+        <div class="card" id="cofreResumo"></div>
+      </div>
+      <div>
+        <div class="card">
+          <h2>Gastos fora do previsto <button class="btn sm" onclick="openGasto()">+ Lançar</button></h2>
+          <div class="note" style="margin-top:-4px">Coparticipação, reajuste, imprevistos — decididos por maioria no grupo.</div>
+          <div id="gastosList" style="margin-top:10px"></div>
+        </div>
+        <div class="card">
+          <h2>Extrato do cofrinho</h2>
+          <div class="scroll" id="extrato"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ABA HISTÓRICO ============ -->
+  <section id="tab-hist" class="hide">
+    <div class="card">
+      <h2>Valor do plano mês a mês</h2>
+      <div class="scroll" id="histMeses"></div>
+    </div>
+    <div class="card">
+      <h2>Contribuições por pessoa</h2>
+      <div class="scroll" id="histPessoas"></div>
+    </div>
+    <div class="card">
+      <h2>Últimas alterações</h2>
+      <div class="log" id="logList"></div>
+    </div>
+  </section>
+
+  <!-- ============ ABA AJUSTES ============ -->
+  <section id="tab-cfg" class="hide">
+    <div class="grid cols">
+      <div>
+        <div class="card">
+          <h2>Combinados</h2>
+          <ul class="rules">
+            <li>O <b>Carlos</b> cuida de um cofrinho exclusivo para o plano.</li>
+            <li>Cada um deposita sua cota até o <b>dia 10</b>, antes do vencimento.</li>
+            <li>O plano é pago a partir do cofrinho; o que sobra vira <b>reserva de emergência</b>.</li>
+            <li>Valor de referência: <b>R$ 400,00 por filho</b> (netos conforme combinado).</li>
+            <li>Reserva ideal: <b>2 a 3 mensalidades</b>. Passou disso, o grupo decide o excedente.</li>
+            <li>Gastos fora do previsto: decididos <b>por maioria</b> no grupo.</li>
+            <li>Precisa atrasar ou pausar? <b>Avise no grupo</b>.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Configurações gerais</h2>
+          <div class="fld"><label>Responsável pelo cofrinho</label><input class="inp" id="cfgResp"></div>
+          <div class="fld"><label>Chave Pix (CPF)</label><input class="inp" id="cfgPix" inputmode="numeric"></div>
+          <div class="fld"><label>Dia limite para depósito</label><input class="inp" id="cfgDia" inputmode="numeric"></div>
+          <div class="fld"><label>Saldo inicial do cofrinho (antes de usar o sistema)</label><input class="inp" id="cfgSaldo" inputmode="decimal"></div>
+          <button class="btn full" onclick="saveCfg()">Salvar configurações</button>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <h2>Participantes <button class="btn sm" onclick="openPart()">+ Adicionar</button></h2>
+          <div class="note" style="margin-top:-4px">Defina aqui o padrão de cada um. O padrão é usado nos meses novos; dá para mudar mês a mês na tela principal.</div>
+          <div class="scroll" style="margin-top:10px"><table class="tbl" id="partTbl"></table></div>
+        </div>
+        <div class="card">
+          <h2>Backup</h2>
+          <div class="row">
+            <button class="btn sec" onclick="exportJSON()">⬇️ Baixar backup</button>
+            <button class="btn sec" onclick="exportCSV()">📊 Exportar planilha (CSV)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<nav><div class="in">
+  <button class="on" data-tab="mes" onclick="go('mes')"><span class="ic">📅</span>Mês</button>
+  <button data-tab="cofre" onclick="go('cofre')"><span class="ic">🐷</span>Cofrinho</button>
+  <button data-tab="hist" onclick="go('hist')"><span class="ic">📈</span>Histórico</button>
+  <button data-tab="cfg" onclick="go('cfg')"><span class="ic">⚙️</span>Ajustes</button>
+</div></nav>
+
+<div class="ov" id="ov" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   CONFIGURAÇÃO DO FIREBASE  (Realtime Database)
+   1. console.firebase.google.com → criar projeto → Realtime Database
+   2. Configurações do projeto → Seus apps → Web → copiar o firebaseConfig
+   3. Cole abaixo (o databaseURL fica na página do Realtime Database)
+   Enquanto estiver vazio, o app roda em MODO TESTE (dados só no aparelho).
+   ===================================================================== */
+const firebaseConfig = {
+  apiKey: "",
+  authDomain: "",
+  databaseURL: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+/* Senha da família para abrir o app (deixe "" para não pedir senha) */
+const SENHA_FAMILIA = "";
+const ROOT = "planoSaudePais";
+
+/* ======================= DADOS PADRÃO ======================= */
+const DEFAULT = {
+  config:{
+    responsavel:"Carlos", pix:"17281040920", diaLimite:10, saldoInicial:0,
+    participantes:{
+      andre:   {nome:"André",       tipo:"Filho", ordem:1, modo:"fixo", fixo:400},
+      junior:  {nome:"Junior",      tipo:"Filho", ordem:2, modo:"fixo", fixo:400},
+      fernanda:{nome:"Fernanda",    tipo:"Filha", ordem:3, modo:"fixo", fixo:400},
+      luciana: {nome:"Luciana",     tipo:"Filha", ordem:4, modo:"fixo", fixo:400},
+      marcelo: {nome:"Marcelo",     tipo:"Filho", ordem:5, modo:"fixo", fixo:400},
+      simone:  {nome:"Simone",      tipo:"Filha", ordem:6, modo:"fixo", fixo:400},
+      guilherme:{nome:"Guilherme",  tipo:"Neto",  ordem:7, modo:"auto", fixo:0},
+      carol:   {nome:"Carol",       tipo:"Neta",  ordem:8, modo:"auto", fixo:0},
+      mfernanda:{nome:"Mª Fernanda",tipo:"Neta",  ordem:9, modo:"auto", fixo:0}
+    }
+  },
+  meses:{}, gastos:{}, log:{}
+};
+
+/* ======================= CAMADA DE DADOS ======================= */
+let S = null, db = null;
+const LOCAL = !firebaseConfig.databaseURL;
+const LSKEY = "planoSaude_local_v1";
+
+function initData(){
+  if(LOCAL){
+    document.getElementById("modeBanner").classList.remove("hide");
+    try{ S = JSON.parse(localStorage.getItem(LSKEY)||"null"); }catch(e){ S=null; }
+    if(!S){ S = JSON.parse(JSON.stringify(DEFAULT)); persistLocal(); }
+    render();
+  }else{
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    db.ref(ROOT).on("value", snap=>{
+      const v = snap.val();
+      if(!v || !v.config){ db.ref(ROOT).update({config:DEFAULT.config}); return; }
+      S = Object.assign({meses:{},gastos:{},log:{}}, v);
+      render();
+    });
+  }
+}
+function persistLocal(){ try{ localStorage.setItem(LSKEY, JSON.stringify(S)); }catch(e){} }
+function setPath(path, val){
+  if(LOCAL){
+    const ks = path.split("/"); let o = S;
+    for(let i=0;i<ks.length-1;i++){ if(o[ks[i]]==null||typeof o[ks[i]]!=="object") o[ks[i]]={}; o=o[ks[i]]; }
+    if(val===null) delete o[ks.at(-1)]; else o[ks.at(-1)] = val;
+    persistLocal(); render();
+  }else{ db.ref(ROOT+"/"+path).set(val); }
+}
+function updatePaths(obj){ // {path:val}
+  if(LOCAL){ Object.entries(obj).forEach(([p,v])=>{ const ks=p.split("/"); let o=S; for(let i=0;i<ks.length-1;i++){ if(o[ks[i]]==null||typeof o[ks[i]]!=="object") o[ks[i]]={}; o=o[ks[i]]; } if(v===null) delete o[ks.at(-1)]; else o[ks.at(-1)]=v; }); persistLocal(); render(); }
+  else db.ref(ROOT).update(obj);
+}
+function newId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function log(acao){
+  const id=newId();
+  setPath("log/"+id,{quando:Date.now(), quem:me()||"?", acao});
+}
+
+/* ======================= UTILITÁRIOS ======================= */
+const brl = v => (Number(v)||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const num = s => { if(typeof s==="number") return s; s=String(s||"").trim().replace(/[R$\s]/g,""); if(s.includes(",")) s=s.replace(/\./g,"").replace(",","."); const n=parseFloat(s); return isNaN(n)?0:Math.round(n*100)/100; };
+const fmtIn = v => (Number(v)||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const mkey = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+const mName = k => { const [y,m]=k.split("-"); return MESES[+m-1]+" "+y; };
+const mShort = k => { const [y,m]=k.split("-"); return MESES[+m-1].slice(0,3)+"/"+y.slice(2); };
+const prevKey = k => { const [y,m]=k.split("-").map(Number); return mkey(new Date(y,m-2,1)); };
+const todayISO = () => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+const fmtDate = iso => iso ? iso.split("-").reverse().join("/") : "";
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function toast(t){ const e=document.getElementById("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove("show"),2200); }
+const me = () => localStorage.getItem("planoSaude_me")||"";
+
+/* ======================= REGRAS DE CÁLCULO ======================= */
+function parts(){
+  const P = (S.config&&S.config.participantes)||{};
+  return Object.entries(P).filter(([,p])=>!p.inativo).map(([id,p])=>({id,...p})).sort((a,b)=>(a.ordem||99)-(b.ordem||99));
+}
+/* modo/valor de cada pessoa no mês: se o mês tem registro próprio usa ele; senão herda do mês anterior mais próximo; senão o padrão */
+function cotaCfg(k, id){
+  const m = S.meses[k];
+  if(m && m.cotas && m.cotas[id]) return m.cotas[id];
+  const keys = Object.keys(S.meses).filter(x=>x<k && S.meses[x].cotas && S.meses[x].cotas[id]).sort();
+  if(keys.length) { const c=S.meses[keys.at(-1)].cotas[id]; return {modo:c.modo==="pausado"?"auto":c.modo, fixo:c.fixo||0}; }
+  const p = S.config.participantes[id]||{};
+  return {modo:p.modo||"auto", fixo:p.fixo||0};
+}
+function planoSugerido(k){
+  const keys = Object.keys(S.meses).filter(x=>x<k && S.meses[x].plano).sort();
+  return keys.length ? S.meses[keys.at(-1)].plano : 0;
+}
+function calc(k){
+  const m = S.meses[k]||{};
+  const plano = num(m.plano), aporte = num(m.aporte);
+  const meta = plano + aporte;
+  const ps = parts().map(p=>({...p, ...cotaCfg(k,p.id)}));
+  const fixos = ps.filter(p=>p.modo==="fixo");
+  const autos = ps.filter(p=>p.modo==="auto");
+  const somaFixos = fixos.reduce((s,p)=>s+num(p.fixo),0);
+  const resto = meta - somaFixos;
+  let parte = 0;
+  if(autos.length && resto>0) parte = Math.ceil(resto/autos.length*100)/100; // arredonda p/ cima no centavo
+  const deps = m.depositos||{};
+  const lim = +(S.config.diaLimite||10);
+  const [yy,mm] = k.split("-").map(Number);
+  const limDate = new Date(yy,mm-1,lim,23,59,59);
+  const atrasou = new Date() > limDate;
+  let totalCotas=0, arrecadado=0, pagos=0, devedores=0;
+  const rows = ps.map(p=>{
+    const cota = p.modo==="fixo" ? num(p.fixo) : p.modo==="auto" ? parte : 0;
+    const dep = deps[p.id] ? num(deps[p.id].valor) : 0;
+    let st;
+    if(p.modo==="pausado" && !dep) st={c:"p-grey",t:"Pausado"};
+    else if(cota===0 && !dep) st={c:"p-grey",t:"Sem cota"};
+    else if(dep>=cota) st={c:"p-ok",t:"✓ Depositou"};
+    else if(dep>0) st={c:"p-warn",t:"Parcial"};
+    else if(atrasou) st={c:"p-bad",t:"Atrasado"};
+    else st={c:"p-warn",t:"Pendente"};
+    totalCotas += cota; arrecadado += dep;
+    if(cota>0){ if(dep>=cota) pagos++; else devedores++; }
+    return {...p, cota, dep, depInfo:deps[p.id]||null, st};
+  });
+  const sobra = Math.round((totalCotas-meta)*100)/100;
+  return {plano, aporte, meta, rows, parte, somaFixos, totalCotas, arrecadado, pagos, devedores, sobra, autos:autos.length, limDate, atrasou, m};
+}
+function saldoCofre(ateK){
+  let s = num(S.config.saldoInicial);
+  const mov = extratoMov();
+  mov.forEach(x=>{ if(!ateK || x.k<=ateK) s += x.v; });
+  return Math.round(s*100)/100;
+}
+function extratoMov(){
+  const mov=[];
+  Object.entries(S.meses).forEach(([k,m])=>{
+    Object.entries(m.depositos||{}).forEach(([id,d])=>{
+      const p=S.config.participantes[id]; mov.push({k, data:d.data||k+"-01", v:num(d.valor), d:"Depósito · "+(p?p.nome:id)});
+    });
+    if(m.planoPago) mov.push({k, data:m.planoPago.data||k+"-10", v:-num(m.planoPago.valor||m.plano), d:"Pagamento do plano · "+mShort(k)});
+  });
+  Object.values(S.gastos||{}).forEach(g=>{ mov.push({k:(g.data||"").slice(0,7), data:g.data, v:-num(g.valor), d:"Gasto extra · "+g.desc}); });
+  return mov.sort((a,b)=>(a.data||"").localeCompare(b.data||""));
+}
+function ultimoPlano(){
+  const ks=Object.keys(S.meses).filter(k=>S.meses[k].plano).sort();
+  return ks.length? num(S.meses[ks.at(-1)].plano):0;
+}
+
+/* ======================= ESTADO DE TELA ======================= */
+let curK = mkey(new Date());
+let curTab = "mes";
+function shiftMonth(d){ const [y,m]=curK.split("-").map(Number); curK=mkey(new Date(y,m-1+d,1)); render(); }
+function go(t){
+  curTab=t;
+  ["mes","cofre","hist","cfg"].forEach(x=>document.getElementById("tab-"+x).classList.toggle("hide",x!==t));
+  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
+  document.getElementById("monthbar").classList.toggle("hide", t!=="mes");
+  document.querySelector("header").style.paddingBottom = t==="mes" ? "" : "16px";
+  render(); window.scrollTo({top:0,behavior:"smooth"});
+}
+
+/* ======================= RENDER ======================= */
+function render(){
+  if(!S) return;
+  document.getElementById("whoName").textContent = me()||"Quem é você?";
+  document.getElementById("mLabel").textContent = mName(curK);
+  document.getElementById("pixKey").textContent = fmtCPF(S.config.pix||"");
+  document.getElementById("pixResp").textContent = S.config.responsavel||"Carlos";
+  document.getElementById("pixDia").textContent = S.config.diaLimite||10;
+  if(curTab==="mes") renderMes();
+  if(curTab==="cofre") renderCofre();
+  if(curTab==="hist") renderHist();
+  if(curTab==="cfg") renderCfg();
+}
+function fmtCPF(c){ c=String(c).replace(/\D/g,""); return c.length===11? c.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,"$1.$2.$3-$4"):c; }
+
+function renderMes(){
+  const C = calc(curK);
+  const el = document.getElementById("resumo");
+  if(!C.plano){
+    const sug = planoSugerido(curK);
+    el.innerHTML = `
+      <h2>Valor do plano em ${mName(curK)}</h2>
+      <div class="note" style="margin:-4px 0 12px">Informe o valor do boleto deste mês. O rateio é calculado na hora.</div>
+      <div class="fld"><label>Valor total do plano (R$)</label>
+      <input class="inp" id="planoIn" inputmode="decimal" placeholder="Ex.: 2.850,00" value="${sug?fmtIn(sug):""}"></div>
+      ${sug?`<div class="note" style="margin:-6px 0 10px">Sugerido: mesmo valor do último mês (${brl(sug)}).</div>`:""}
+      <button class="btn full" onclick="savePlano()">Confirmar valor do mês</button>`;
+  }else{
+    const pct = C.meta? Math.min(100, C.arrecadado/C.meta*100):0;
+    const ant = planoSugerido(curK);
+    const varia = ant? C.plano-ant : 0;
+    const pago = C.m.planoPago;
+    el.innerHTML = `
+      <div class="row" style="justify-content:space-between">
+        <span class="lbl">Valor do plano no mês</span>
+        <button class="btn ghost sm" onclick="editPlano()">✏️ Alterar</button>
+      </div>
+      <div class="big"><span class="num">${brl(C.plano)}</span>
+        ${ant&&varia? `<span class="pill ${varia>0?'p-bad':'p-ok'}">${varia>0?'▲':'▼'} ${brl(Math.abs(varia))} vs mês anterior</span>`:""}
+      </div>
+      ${C.aporte? `<div class="note">+ ${brl(C.aporte)} para reforçar a reserva · meta ${brl(C.meta)}</div>`:""}
+      <div class="kpis">
+        <div class="kpi"><span class="lbl">Arrecadado</span><span class="num" style="color:var(--ok)">${brl(C.arrecadado)}</span></div>
+        <div class="kpi"><span class="lbl">Falta</span><span class="num" style="color:${C.totalCotas-C.arrecadado>0?'var(--bad)':'var(--ok)'}">${brl(Math.max(0,C.totalCotas-C.arrecadado))}</span></div>
+        <div class="kpi"><span class="lbl">Cota do rateio</span><span class="num">${C.autos?brl(C.parte):"—"}</span></div>
+        <div class="kpi"><span class="lbl">Depositaram</span><span class="num">${C.pagos}/${C.pagos+C.devedores}</span></div>
+      </div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <div class="note">${Math.round(pct)}% do valor do mês · prazo: ${fmtDate(C.limDate.toISOString().slice(0,10))}${C.atrasou?' (prazo encerrado)':''}</div>
+      ${C.sobra>0.009? `<div class="note">💚 As cotas somam ${brl(C.totalCotas)} — <b>${brl(C.sobra)}</b> a mais que o plano, que vai para a reserva.</div>`:""}
+      ${C.sobra<-0.009? `<div class="note" style="color:var(--bad)">⚠️ As cotas somam ${brl(C.totalCotas)} — faltam <b>${brl(-C.sobra)}</b> para cobrir o plano. Coloque alguém em “Rateio” ou ajuste os valores fixos.</div>`:""}
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+        ${pago? `<div class="row" style="justify-content:space-between"><span class="pill p-ok">✓ Plano pago em ${fmtDate(pago.data)} · ${brl(pago.valor)}</span><button class="btn ghost sm" onclick="desfazPago()">desfazer</button></div>`
+              : `<button class="btn sec full" onclick="marcarPago()">🏥 ${esc(S.config.responsavel||"Carlos")} pagou o plano deste mês</button>`}
+      </div>`;
+  }
+  // participantes
+  const pl = document.getElementById("plist");
+  document.getElementById("ruleInfo").textContent = C.autos? `${C.autos} no rateio`:"todos com valor fixo";
+  pl.innerHTML = C.rows.map(r=>{
+    const cls = r.st.t.startsWith("✓")?"paid":(r.st.t==="Atrasado"?"late":"");
+    const sub = r.modo==="fixo"?"valor fixo definido": r.modo==="auto"? (C.plano?"parte do rateio automático":"aguardando valor do plano") : "contribuição pausada neste mês";
+    return `<div class="pc ${cls}">
+      <div class="top">
+        <div><div class="nm">${esc(r.nome)}${r.nome===me()?' <span class="pill p-pri" style="font-size:10px">você</span>':''}</div><div class="tp">${esc(r.tipo||"")}</div></div>
+        <span class="pill ${r.st.c}">${r.st.t}</span>
+      </div>
+      <div class="cota">${C.plano||r.modo==="fixo"?brl(r.cota):"—"}</div>
+      <div class="sub">${sub}${r.dep?` · depositou ${brl(r.dep)}${r.depInfo.data?' em '+fmtDate(r.depInfo.data):''}`:""}</div>
+      <div class="seg">
+        <button class="${r.modo==='auto'?'on':''}" onclick="setModo('${r.id}','auto')">Rateio</button>
+        <button class="${r.modo==='fixo'?'on':''}" onclick="setModo('${r.id}','fixo')">Valor fixo</button>
+        <button class="${r.modo==='pausado'?'on':''}" onclick="setModo('${r.id}','pausado')">Pausado</button>
+      </div>
+      ${r.modo==='fixo'?`<div class="fixin"><span>R$</span><input class="inp" inputmode="decimal" value="${fmtIn(r.fixo)}" onchange="setFixo('${r.id}',this.value)"></div>`:""}
+      <div class="acts">
+        ${r.dep? `<button class="btn sec sm" onclick="openDep('${r.id}')">✏️ Editar depósito</button>`
+               : `<button class="btn sm" onclick="openDep('${r.id}')" ${(!C.plano&&r.modo!=='fixo')?'disabled style="opacity:.5"':''}>✅ Registrar depósito</button>`}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+/* ----- ações do mês ----- */
+function snapshotCotas(k){ // grava a configuração atual de todos no mês (congela histórico)
+  const obj={};
+  parts().forEach(p=>{ const c=cotaCfg(k,p.id); obj[`meses/${k}/cotas/${p.id}`]={modo:c.modo,fixo:num(c.fixo)}; });
+  return obj;
+}
+function savePlano(){
+  const v=num(document.getElementById("planoIn").value);
+  if(!v){ toast("Informe o valor do plano"); return; }
+  const upd = snapshotCotas(curK); upd[`meses/${curK}/plano`]=v;
+  updatePaths(upd); log(`definiu o plano de ${mName(curK)} em ${brl(v)}`); toast("Valor do mês salvo");
+}
+function editPlano(){
+  const m=S.meses[curK]||{};
+  modal(`<h3>Valor de ${mName(curK)}</h3>
+    <div class="fld"><label>Valor total do plano (R$)</label><input class="inp" id="mPlano" inputmode="decimal" value="${fmtIn(m.plano)}"></div>
+    <div class="fld"><label>Aporte extra para a reserva (opcional, R$)</label><input class="inp" id="mAporte" inputmode="decimal" value="${m.aporte?fmtIn(m.aporte):""}" placeholder="0,00"></div>
+    <div class="note" style="margin:-4px 0 14px">O aporte extra entra no rateio do mês junto com o plano.</div>
+    <div class="row"><button class="btn" style="flex:1" onclick="saveEditPlano()">Salvar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>`);
+}
+function saveEditPlano(){
+  const v=num(mPlano.value), a=num(mAporte.value);
+  if(!v){ toast("Informe o valor"); return; }
+  updatePaths({[`meses/${curK}/plano`]:v,[`meses/${curK}/aporte`]:a||null});
+  log(`alterou o plano de ${mName(curK)} para ${brl(v)}${a?` (+${brl(a)} reserva)`:""}`); closeModal(); toast("Atualizado");
+}
+function setModo(id,modo){
+  const c=cotaCfg(curK,id); let fixo=num(c.fixo);
+  if(modo==="fixo" && !fixo){ const C=calc(curK); fixo = C.parte || 400; }
+  const upd = snapshotCotas(curK);
+  upd[`meses/${curK}/cotas/${id}`]={modo,fixo};
+  if(modo!=="pausado"){ upd[`config/participantes/${id}/modo`]=modo; upd[`config/participantes/${id}/fixo`]=fixo; }
+  updatePaths(upd);
+  const n=S.config.participantes[id].nome;
+  log(`${n}: ${modo==="auto"?"entrou no rateio":modo==="fixo"?"valor fixo "+brl(fixo):"pausou a contribuição"} em ${mShort(curK)}`);
+}
+function setFixo(id,val){
+  const v=num(val);
+  const upd = snapshotCotas(curK);
+  upd[`meses/${curK}/cotas/${id}`]={modo:"fixo",fixo:v};
+  upd[`config/participantes/${id}/modo`]="fixo"; upd[`config/participantes/${id}/fixo`]=v;
+  updatePaths(upd);
+  log(`${S.config.participantes[id].nome}: valor fixo ${brl(v)} a partir de ${mShort(curK)}`); toast("Valor atualizado — rateio recalculado");
+}
+function openDep(id){
+  const C=calc(curK); const r=C.rows.find(x=>x.id===id); const d=r.depInfo||{};
+  modal(`<h3>Depósito · ${esc(r.nome)}</h3>
+    <div class="note" style="margin:-6px 0 12px">Cota de ${mName(curK)}: <b>${brl(r.cota)}</b></div>
+    <div class="fld"><label>Valor depositado (R$)</label><input class="inp" id="dVal" inputmode="decimal" value="${fmtIn(d.valor!=null?d.valor:r.cota)}"></div>
+    <div class="fld"><label>Data do Pix</label><input class="inp" id="dData" type="date" value="${d.data||todayISO()}"></div>
+    <div class="row">
+      <button class="btn" style="flex:1" onclick="saveDep('${id}')">Salvar</button>
+      ${r.depInfo?`<button class="btn sec" style="color:var(--bad)" onclick="delDep('${id}')">Remover</button>`:""}
+      <button class="btn sec" onclick="closeModal()">Cancelar</button>
+    </div>`);
+}
+function saveDep(id){
+  const v=num(dVal.value); if(!v){ toast("Informe o valor"); return; }
+  const upd=snapshotCotas(curK);
+  upd[`meses/${curK}/depositos/${id}`]={valor:v,data:dData.value||todayISO(),por:me()||"",em:Date.now()};
+  updatePaths(upd); log(`registrou depósito de ${S.config.participantes[id].nome}: ${brl(v)} (${mShort(curK)})`);
+  closeModal(); toast("Depósito registrado 👍");
+}
+function delDep(id){
+  if(!confirm("Remover este depósito?")) return;
+  setPath(`meses/${curK}/depositos/${id}`,null); log(`removeu depósito de ${S.config.participantes[id].nome} (${mShort(curK)})`); closeModal();
+}
+function marcarPago(){
+  const C=calc(curK);
+  modal(`<h3>Pagamento do plano</h3>
+    <div class="fld"><label>Valor pago (R$)</label><input class="inp" id="pVal" inputmode="decimal" value="${fmtIn(C.plano)}"></div>
+    <div class="fld"><label>Data do pagamento</label><input class="inp" id="pData" type="date" value="${todayISO()}"></div>
+    <div class="row"><button class="btn" style="flex:1" onclick="savePago()">Confirmar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>`);
+}
+function savePago(){
+  const v=num(pVal.value); setPath(`meses/${curK}/planoPago`,{valor:v,data:pData.value||todayISO()});
+  log(`marcou o plano de ${mName(curK)} como pago (${brl(v)})`); closeModal(); toast("Pagamento registrado");
+}
+function desfazPago(){ if(confirm("Desfazer o pagamento do plano deste mês?")){ setPath(`meses/${curK}/planoPago`,null); log(`desfez pagamento do plano (${mShort(curK)})`);} }
+
+function copyPix(){
+  const k=String(S.config.pix||"").replace(/\D/g,"");
+  (navigator.clipboard? navigator.clipboard.writeText(k):Promise.reject()).then(()=>toast("Chave Pix copiada")).catch(()=>{ prompt("Copie a chave Pix:",k); });
+}
+function shareWA(){
+  const C=calc(curK);
+  if(!C.plano){ toast("Informe primeiro o valor do plano do mês"); return; }
+  const L=[];
+  L.push(`🩺 *Plano de Saúde – Pai e Mãe*`);
+  L.push(`📅 ${mName(curK).replace(/^./,c=>c.toUpperCase())}`);
+  L.push(`💰 Valor do plano: *${brl(C.plano)}*${C.aporte?` (+${brl(C.aporte)} reserva)`:""}`);
+  L.push("");
+  C.rows.forEach(r=>{
+    const ic = r.st.t.startsWith("✓")?"✅":r.modo==="pausado"?"⏸️":r.dep?"🟡":"⏳";
+    L.push(`${ic} ${r.nome}: ${r.modo==="pausado"?"pausado":brl(r.cota)}`);
+  });
+  L.push("");
+  L.push(`Arrecadado: ${brl(C.arrecadado)} de ${brl(C.totalCotas)}`);
+  L.push(`🐷 Saldo do cofrinho: ${brl(saldoCofre())}`);
+  L.push("");
+  L.push(`Pix para o ${S.config.responsavel} (CPF): ${String(S.config.pix).replace(/\D/g,"")}`);
+  L.push(`Prazo: até dia ${S.config.diaLimite}. Depois de enviar, avise aqui 👍`);
+  L.push(location.href.split("#")[0]);
+  window.open("https://wa.me/?text="+encodeURIComponent(L.join("\n")),"_blank");
+}
+
+/* ======================= COFRINHO ======================= */
+function renderCofre(){
+  const saldo=saldoCofre(), mens=ultimoPlano();
+  const min=mens*2, max=mens*3, top=Math.max(max*1.25, saldo*1.05, 1);
+  let status;
+  if(!mens) status=`<span class="pill p-grey">Informe o valor do plano para avaliar a reserva</span>`;
+  else if(saldo<min) status=`<span class="pill p-warn">Abaixo da reserva ideal · faltam ${brl(min-saldo)}</span>`;
+  else if(saldo<=max) status=`<span class="pill p-ok">✓ Reserva dentro do ideal</span>`;
+  else status=`<span class="pill p-pri">Acima de 3 mensalidades · excedente ${brl(saldo-max)} — decidir no grupo</span>`;
+  const meses = mens? (saldo/mens).toFixed(1).replace(".",","):"—";
+  document.getElementById("cofreResumo").innerHTML=`
+    <span class="lbl">Saldo atual do cofrinho</span>
+    <div class="big"><span class="num" style="color:${saldo<0?'var(--bad)':'var(--pri)'}">${brl(saldo)}</span></div>
+    <div class="note">Equivale a <b>${meses}</b> mensalidade(s) do plano (${brl(mens)}).</div>
+    <div style="margin-top:12px">${status}</div>
+    ${mens?`<div class="gauge">
+      <div class="zone" style="left:${min/top*100}%;width:${(max-min)/top*100}%"></div>
+      <div class="fill" style="width:${Math.max(0,Math.min(100,saldo/top*100))}%"></div>
+      <div class="tick" style="left:${min/top*100}%">2× ${brl(min)}</div>
+      <div class="tick" style="left:${max/top*100}%">3× ${brl(max)}</div>
+    </div>`:""}
+    <div class="note">Reserva ideal: 2 a 3 mensalidades. Saldo = saldo inicial + depósitos − pagamentos do plano − gastos extras.</div>`;
+  const G=Object.entries(S.gastos||{}).sort((a,b)=>(b[1].data||"").localeCompare(a[1].data||""));
+  document.getElementById("gastosList").innerHTML = G.length? `<table class="tbl"><tr><th>Data</th><th>Descrição</th><th class="r">Valor</th><th></th></tr>`+
+    G.map(([id,g])=>`<tr><td>${fmtDate(g.data)}</td><td>${esc(g.desc)}</td><td class="r neg">${brl(g.valor)}</td><td class="r"><button class="btn ghost sm" onclick="delGasto('${id}')">✕</button></td></tr>`).join("")+`</table>`
+    : `<div class="empty">Nenhum gasto extra lançado.</div>`;
+  const mov=extratoMov(); let s=num(S.config.saldoInicial);
+  const linhas = mov.map(x=>{ s+=x.v; return {...x, s}; }).reverse();
+  document.getElementById("extrato").innerHTML = linhas.length? `<table class="tbl"><tr><th>Data</th><th>Movimento</th><th class="r">Valor</th><th class="r">Saldo</th></tr>`+
+    linhas.slice(0,60).map(x=>`<tr><td>${fmtDate(x.data)}</td><td>${esc(x.d)}</td><td class="r ${x.v<0?'neg':'pos'}">${x.v<0?'−':'+'} ${brl(Math.abs(x.v))}</td><td class="r">${brl(x.s)}</td></tr>`).join("")+
+    (num(S.config.saldoInicial)?`<tr><td></td><td>Saldo inicial</td><td></td><td class="r">${brl(S.config.saldoInicial)}</td></tr>`:"")+`</table>`
+    : `<div class="empty">Sem movimentos ainda.</div>`;
+}
+function openGasto(){
+  modal(`<h3>Gasto fora do previsto</h3>
+    <div class="fld"><label>Descrição</label><input class="inp" id="gDesc" placeholder="Ex.: coparticipação exame da mãe"></div>
+    <div class="fld"><label>Valor (R$)</label><input class="inp" id="gVal" inputmode="decimal"></div>
+    <div class="fld"><label>Data</label><input class="inp" id="gData" type="date" value="${todayISO()}"></div>
+    <div class="note" style="margin:-4px 0 12px">Lembre: gastos fora do previsto são decididos por maioria no grupo.</div>
+    <div class="row"><button class="btn" style="flex:1" onclick="saveGasto()">Lançar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>`);
+}
+function saveGasto(){
+  const d=gDesc.value.trim(), v=num(gVal.value);
+  if(!d||!v){ toast("Preencha descrição e valor"); return; }
+  setPath("gastos/"+newId(),{desc:d,valor:v,data:gData.value||todayISO(),por:me()});
+  log(`lançou gasto extra: ${d} (${brl(v)})`); closeModal(); toast("Gasto lançado");
+}
+function delGasto(id){ const g=S.gastos[id]; if(confirm("Excluir este gasto?")){ setPath("gastos/"+id,null); log(`excluiu gasto: ${g.desc}`);} }
+
+/* ======================= HISTÓRICO ======================= */
+function renderHist(){
+  const ks=Object.keys(S.meses).filter(k=>S.meses[k].plano).sort().reverse();
+  if(!ks.length){ document.getElementById("histMeses").innerHTML=`<div class="empty">Ainda não há meses registrados.</div>`; document.getElementById("histPessoas").innerHTML=""; }
+  else{
+    document.getElementById("histMeses").innerHTML=`<table class="tbl"><tr><th>Mês</th><th class="r">Plano</th><th class="r">Variação</th><th class="r">Arrecadado</th><th class="r">Depositaram</th><th>Pago</th></tr>`+
+      ks.map(k=>{ const C=calc(k); const a=planoSugerido(k); const v=a?C.plano-a:0;
+        return `<tr style="cursor:pointer" onclick="curK='${k}';go('mes')"><td><b>${mShort(k)}</b></td><td class="r">${brl(C.plano)}</td>
+        <td class="r ${v>0?'neg':v<0?'pos':''}">${a&&v?(v>0?'+':'−')+' '+brl(Math.abs(v)):'—'}</td>
+        <td class="r">${brl(C.arrecadado)}</td><td class="r">${C.pagos}/${C.pagos+C.devedores}</td>
+        <td>${C.m.planoPago?'<span class="pill p-ok">✓</span>':'<span class="pill p-grey">—</span>'}</td></tr>`;}).join("")+`</table>`;
+    const P=parts(); const kk=ks.slice(0,12).reverse();
+    document.getElementById("histPessoas").innerHTML=`<table class="tbl"><tr><th>Pessoa</th>${kk.map(k=>`<th class="r">${mShort(k)}</th>`).join("")}<th class="r">Total</th></tr>`+
+      P.map(p=>{ let t=0; return `<tr><td><b>${esc(p.nome)}</b></td>${kk.map(k=>{ const d=(S.meses[k].depositos||{})[p.id]; const v=d?num(d.valor):0; t+=v; const C=calc(k); const r=C.rows.find(x=>x.id===p.id); const due=r?r.cota:0;
+        return `<td class="r ${v>=due&&v>0?'pos':(due>0&&v<due?'neg':'')}">${v?brl(v):(r&&r.modo==='pausado'?'⏸':'—')}</td>`;}).join("")}<td class="r"><b>${brl(t)}</b></td></tr>`;}).join("")+`</table>`;
+  }
+  const L=Object.values(S.log||{}).sort((a,b)=>b.quando-a.quando).slice(0,40);
+  document.getElementById("logList").innerHTML = L.length? L.map(l=>`<div>${new Date(l.quando).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})} · <b>${esc(l.quem)}</b> ${esc(l.acao)}</div>`).join("") : "Nenhuma alteração ainda.";
+}
+
+/* ======================= AJUSTES ======================= */
+function renderCfg(){
+  const c=S.config;
+  if(document.activeElement.tagName!=="INPUT"){
+    cfgResp.value=c.responsavel||""; cfgPix.value=c.pix||""; cfgDia.value=c.diaLimite||10; cfgSaldo.value=fmtIn(c.saldoInicial||0);
+  }
+  const P=Object.entries(c.participantes||{}).map(([id,p])=>({id,...p})).sort((a,b)=>(a.ordem||99)-(b.ordem||99));
+  document.getElementById("partTbl").innerHTML=`<tr><th>Nome</th><th>Tipo</th><th>Padrão</th><th></th></tr>`+
+    P.map(p=>`<tr style="${p.inativo?'opacity:.45':''}"><td><b>${esc(p.nome)}</b></td><td>${esc(p.tipo||"")}</td>
+      <td>${p.inativo?'inativo':p.modo==='fixo'?brl(p.fixo):'rateio'}</td>
+      <td class="r"><button class="btn ghost sm" onclick="openPart('${p.id}')">Editar</button></td></tr>`).join("");
+}
+function saveCfg(){
+  updatePaths({"config/responsavel":cfgResp.value.trim()||"Carlos","config/pix":cfgPix.value.replace(/\D/g,""),
+    "config/diaLimite":Math.min(28,Math.max(1,parseInt(cfgDia.value)||10)),"config/saldoInicial":num(cfgSaldo.value)});
+  log("alterou as configurações gerais"); toast("Configurações salvas");
+}
+function openPart(id){
+  const p=id?S.config.participantes[id]:{nome:"",tipo:"Neto",modo:"auto",fixo:0};
+  modal(`<h3>${id?"Editar":"Novo"} participante</h3>
+    <div class="fld"><label>Nome</label><input class="inp" id="ptNome" value="${esc(p.nome)}"></div>
+    <div class="fld"><label>Tipo</label><select class="inp" id="ptTipo">${["Filho","Filha","Neto","Neta","Outro"].map(t=>`<option ${t===p.tipo?"selected":""}>${t}</option>`).join("")}</select></div>
+    <div class="fld"><label>Contribuição padrão</label><select class="inp" id="ptModo"><option value="auto" ${p.modo!=="fixo"?"selected":""}>Rateio automático</option><option value="fixo" ${p.modo==="fixo"?"selected":""}>Valor fixo</option></select></div>
+    <div class="fld"><label>Valor fixo (R$)</label><input class="inp" id="ptFixo" inputmode="decimal" value="${fmtIn(p.fixo||0)}"></div>
+    ${id?`<div class="fld"><label><input type="checkbox" id="ptInat" ${p.inativo?"checked":""}> Inativo (sai do rateio dos próximos meses)</label></div>`:""}
+    <div class="row"><button class="btn" style="flex:1" onclick="savePart('${id||""}')">Salvar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>`);
+}
+function savePart(id){
+  const nome=ptNome.value.trim(); if(!nome){ toast("Informe o nome"); return; }
+  const novo=!id; if(novo) id=nome.toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g,"")+"_"+newId().slice(-4);
+  const old=S.config.participantes[id]||{};
+  const ordem = old.ordem || (Object.keys(S.config.participantes).length+1);
+  const obj={...old,nome,tipo:ptTipo.value,modo:ptModo.value,fixo:num(ptFixo.value),ordem};
+  if(!novo){ obj.inativo = document.getElementById("ptInat").checked || null; }
+  // congela meses já registrados antes de mudar o padrão
+  const upd={}; Object.keys(S.meses).forEach(k=>{ if(S.meses[k].plano && !(S.meses[k].cotas||{})[id] && !novo){ const c=cotaCfg(k,id); upd[`meses/${k}/cotas/${id}`]={modo:c.modo,fixo:num(c.fixo)}; } });
+  upd["config/participantes/"+id]=obj;
+  updatePaths(upd); log(`${novo?"adicionou":"editou"} participante ${nome}`); closeModal(); toast("Salvo");
+}
+
+/* ======================= EXPORTAÇÃO ======================= */
+function download(name, text, type){ const b=new Blob([text],{type}); const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
+function exportJSON(){ download(`plano-saude-backup-${todayISO()}.json`, JSON.stringify(S,null,2), "application/json"); }
+function exportCSV(){
+  const ks=Object.keys(S.meses).filter(k=>S.meses[k].plano).sort();
+  const L=[["Mês","Valor do plano","Pessoa","Tipo","Modo","Cota","Depositado","Data depósito","Status"].join(";")];
+  ks.forEach(k=>{ const C=calc(k); C.rows.forEach(r=>L.push([mShort(k),fmtIn(C.plano),r.nome,r.tipo,r.modo,fmtIn(r.cota),fmtIn(r.dep),fmtDate(r.depInfo&&r.depInfo.data),r.st.t.replace("✓ ","")].join(";"))); });
+  download(`plano-saude-${todayISO()}.csv`, "﻿"+L.join("\n"), "text/csv");
+}
+
+/* ======================= MODAL / IDENTIDADE ======================= */
+function modal(html){ document.getElementById("modal").innerHTML=html; document.getElementById("ov").classList.add("show"); const f=document.querySelector("#modal input"); if(f&&window.innerWidth>700) f.focus(); }
+function closeModal(){ document.getElementById("ov").classList.remove("show"); }
+function pickWho(){
+  const opts = parts().map(p=>p.nome).concat([S.config.responsavel||"Carlos"]);
+  modal(`<h3>Quem é você?</h3><div class="note" style="margin:-6px 0 12px">Só para registrar quem fez cada alteração.</div>
+    <div class="plist">${opts.map(n=>`<button class="btn ${n===me()?'':'sec'}" onclick="setMe('${esc(n)}')">${esc(n)}</button>`).join("")}</div>`);
+}
+function setMe(n){ localStorage.setItem("planoSaude_me",n); closeModal(); render(); toast("Olá, "+n+"!"); }
+
+/* ======================= INÍCIO ======================= */
+function start(){
+  if(SENHA_FAMILIA && localStorage.getItem("planoSaude_ok")!==SENHA_FAMILIA){
+    const s=prompt("Senha da família:");
+    if(s!==SENHA_FAMILIA){ document.body.innerHTML='<div class="empty" style="padding:60px 20px">Senha incorreta. Recarregue a página para tentar de novo.</div>'; return; }
+    localStorage.setItem("planoSaude_ok",s);
+  }
+  initData();
+  setTimeout(()=>{ if(S && !me()) pickWho(); }, 400);
+}
+start();
+</script>
+</body>
+</html>
